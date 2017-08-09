@@ -20,6 +20,9 @@ type FieldReader struct {
 	// If TrimLeadingSpace is true, leading white space in a field is ignored.
 	// This is done even if the field delimiter, Comma, is white space.
 	TrimLeadingSpace bool
+	// FieldNames are the names for the fields on each row. If FieldNames is
+	// left nil, it will be  set to the first row read.
+	FieldNames []string
 
 	r   csv.Reader
 	idx map[string]int
@@ -45,13 +48,18 @@ func (f *FieldReader) Scan() bool {
 		f.r.Comment = f.Comment
 		f.r.LazyQuotes = f.LazyQuotes
 		f.r.TrimLeadingSpace = f.TrimLeadingSpace
+	}
 
-		f.row, f.err = f.r.Read()
+	if f.FieldNames == nil {
+		f.FieldNames, f.err = f.r.Read()
 		if f.err != nil {
 			return false
 		}
+	}
+
+	if f.idx == nil {
 		f.idx = make(map[string]int, len(f.row))
-		for n, field := range f.row {
+		for n, field := range f.FieldNames {
 			f.idx[field] = n
 		}
 	}
