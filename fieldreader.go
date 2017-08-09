@@ -63,11 +63,27 @@ func (f *FieldReader) Scan() bool {
 	return true
 }
 
-func (f *FieldReader) Get(fieldname string) string {
+func (f *FieldReader) Field(fieldname string) string {
 	if idx, ok := f.idx[fieldname]; ok {
 		return f.row[idx]
 	}
 	return ""
+}
+
+func (f *FieldReader) Fields() map[string]string {
+	m := make(map[string]string, len(f.idx))
+	for key, idx := range f.idx {
+		m[key] = f.row[idx]
+	}
+	return m
+}
+
+func (f *FieldReader) ReadAll() ([]map[string]string, error) {
+	rows := make([]map[string]string, 0)
+	for f.Scan() {
+		rows = append(rows, f.Fields())
+	}
+	return rows, f.Err()
 }
 
 func (f *FieldReader) Err() error {

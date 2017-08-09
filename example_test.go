@@ -17,7 +17,7 @@ Ken,Thompson,ken
 	r := csv.NewFieldReader(strings.NewReader(in))
 
 	for r.Scan() {
-		fmt.Println(r.Get("username"))
+		fmt.Println(r.Field("username"))
 	}
 
 	if err := r.Err(); err != nil {
@@ -44,7 +44,7 @@ Ken;Thompson;ken
 	r.Comment = '#'
 
 	for r.Scan() {
-		fmt.Println(r.Get("username"))
+		fmt.Println(r.Field("username"))
 	}
 
 	if err := r.Err(); err != nil {
