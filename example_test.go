@@ -8,7 +8,7 @@ import (
 	"github.com/carlmjohnson/csv"
 )
 
-func ExampleReader() {
+func ExampleFieldReader() {
 	in := `first_name,last_name,username
 "Rob","Pike",rob
 Ken,Thompson,ken
@@ -32,7 +32,7 @@ Ken,Thompson,ken
 
 // This example shows how csv.FieldReader can be configured to handle other
 // types of CSV files.
-func ExampleReader_options() {
+func ExampleFieldReader_options() {
 	in := `first_name;last_name;username
 "Rob";"Pike";rob
 # lines beginning with a # character are ignored
