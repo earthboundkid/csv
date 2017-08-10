@@ -5,6 +5,8 @@ import (
 	"io"
 )
 
+// FieldReader is a wrapper around encoding/csv.Reader that allows reference to
+// columns in a CSV source by field names. Its usage is like bufio.Scanner.
 type FieldReader struct {
 	// Comma is the field delimiter.
 	// It is set to comma (',') by NewReader.
@@ -30,6 +32,7 @@ type FieldReader struct {
 	err error
 }
 
+// NewFieldReader returns a new FieldReader that reads from r.
 func NewFieldReader(r io.Reader) *FieldReader {
 	cr := csv.NewReader(r)
 	return &FieldReader{
@@ -38,6 +41,8 @@ func NewFieldReader(r io.Reader) *FieldReader {
 	}
 }
 
+// Scan loads the next row into the FieldReader. It returns false upon
+// encountering an error in the underlying io.Reader.
 func (f *FieldReader) Scan() bool {
 	if f.err != nil {
 		return false
@@ -71,6 +76,8 @@ func (f *FieldReader) Scan() bool {
 	return true
 }
 
+// Field returns the value in the currently loaded row of the column
+// corresponding to fieldname.
 func (f *FieldReader) Field(fieldname string) string {
 	if idx, ok := f.idx[fieldname]; ok {
 		return f.row[idx]
@@ -78,6 +85,7 @@ func (f *FieldReader) Field(fieldname string) string {
 	return ""
 }
 
+// Fields returns a map from fieldnames to values for the current row.
 func (f *FieldReader) Fields() map[string]string {
 	m := make(map[string]string, len(f.idx))
 	for key, idx := range f.idx {
@@ -86,6 +94,8 @@ func (f *FieldReader) Fields() map[string]string {
 	return m
 }
 
+// ReadAll consumes the underlying io.Reader and returns a slice of maps for
+// each row.
 func (f *FieldReader) ReadAll() ([]map[string]string, error) {
 	rows := make([]map[string]string, 0)
 	for f.Scan() {
@@ -94,6 +104,8 @@ func (f *FieldReader) ReadAll() ([]map[string]string, error) {
 	return rows, f.Err()
 }
 
+// Err returns any errors encountered by the FieldReader, except io.EOF, which
+// is not considered an error in normal operation.
 func (f *FieldReader) Err() error {
 	if f.err != io.EOF {
 		return f.err
