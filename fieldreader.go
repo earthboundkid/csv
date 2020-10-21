@@ -35,6 +35,7 @@ type FieldReader struct {
 // NewFieldReader returns a new FieldReader that reads from r.
 func NewFieldReader(r io.Reader) *FieldReader {
 	cr := csv.NewReader(r)
+	cr.ReuseRecord = true
 	return &FieldReader{
 		Comma: ',',
 		r:     *cr,
