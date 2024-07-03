@@ -1,3 +1,3 @@
-# csv  [![GoDoc](https://godoc.org/github.com/carlmjohnson/csv?status.svg)](https://godoc.org/github.com/carlmjohnson/csv) [![Go Report Card](https://goreportcard.com/badge/github.com/carlmjohnson/csv)](https://goreportcard.com/report/github.com/carlmjohnson/csv)
+# csv  [![GoDoc](https://godoc.org/github.com/earthbounkid/csv?status.svg)](https://pkg.go.dev/github.com/earthboundkid/csv/v2) [![Go Report Card](https://goreportcard.com/badge/github.com/earthbounkid/csv/v2)](https://goreportcard.com/report/github.com/earthbounkid/csv/v2) [![Coverage Status](https://coveralls.io/repos/github/earthboundkid/csv/badge.svg)](https://coveralls.io/github/earthboundkid/csv)
 
 Go CSV reader like Python's DictReader.
