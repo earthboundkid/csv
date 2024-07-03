@@ -1,3 +1,5 @@
+// Package csv is a wrapper around encoding/csv
+// that makes it more convenient to work with named fields of CSV tables.
 package csv
 
 import (
@@ -35,8 +37,8 @@ type Options struct {
 	FieldNames []string
 }
 
-// Rows loads the next row into the Options. It returns false upon
-// encountering an error in the underlying io.Reader.
+// Rows returns a sequence yielding a Row for each row parsed from o.Reader.
+// If o.Reader returns an error other than io.EOF, it will be yielded to the caller.
 func (o *Options) Rows() iter.Seq2[*Row, error] {
 	return func(yield func(*Row, error) bool) {
 		cr := csv.NewReader(o.Reader)
