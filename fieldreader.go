@@ -133,7 +133,7 @@ func (r *Row) Fields() map[string]string {
 
 // Scan returns an iterator reading from o.
 // On each iteration it scans the row into v.
-// See [row.Scan].
+// See [Row.Scan].
 func Scan[T any](o Options, v *T) iter.Seq[error] {
 	return func(yield func(error) bool) {
 		var (
