@@ -9,7 +9,7 @@ import (
 	"github.com/earthboundkid/csv/v2"
 )
 
-func Example() {
+func ExampleOptions_ReadAll() {
 	in := `first_name,last_name,username
 "Rob","Pike",rob
 Ken,Thompson,ken
@@ -18,18 +18,14 @@ Ken,Thompson,ken
 	csvopt := csv.Options{
 		Reader: strings.NewReader(in),
 	}
-
-	for row, err := range csvopt.Rows() {
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(row.Field("username"))
+	rows, err := csvopt.ReadAll()
+	if err != nil {
+		log.Fatal(err)
 	}
+	fmt.Println(rows)
 
 	// Output:
-	// rob
-	// ken
-	// gri
+	// [map[first_name:Rob last_name:Pike username:rob] map[first_name:Ken last_name:Thompson username:ken] map[first_name:Robert last_name:Griesemer username:gri]]
 }
 
 // This example shows how csv.FieldReader can be configured to handle other
@@ -47,17 +43,20 @@ Ken;Thompson;ken
 		FieldNames: []string{"first_name", "last_name", "username"},
 	}
 
-	rows, err := csvopt.ReadAll()
-	if err != nil {
-		log.Fatal(err)
+	for row, err := range csvopt.Rows() {
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(row.Field("username"))
 	}
-	fmt.Println(rows)
 
 	// Output:
-	// [map[first_name:Rob last_name:Pike username:rob] map[first_name:Ken last_name:Thompson username:ken] map[first_name:Robert last_name:Griesemer username:gri]]
+	// rob
+	// ken
+	// gri
 }
 
-func ExampleScan() {
+func Example() {
 	in := `first_name,last_name,username
 "Rob","Pike",rob
 Ken,Thompson,ken
@@ -76,13 +75,13 @@ Ken,Thompson,ken
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(user)
+		fmt.Printf("%q %s, %s\n", user.Username, user.Last, user.First)
 	}
 
 	// Output:
-	// {rob Rob Pike}
-	// {ken Ken Thompson}
-	// {gri Robert Griesemer}
+	// "rob" Pike, Rob
+	// "ken" Thompson, Ken
+	// "gri" Griesemer, Robert
 }
 
 func BenchmarkRows(b *testing.B) {
