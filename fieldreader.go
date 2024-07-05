@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"io"
 	"iter"
+	"reflect"
 )
 
 // NULL is used to override the default separator of ',' and use 0x00 as the field separator.
@@ -128,4 +129,71 @@ func (r *Row) Fields() map[string]string {
 		m[key] = r.row[idx]
 	}
 	return m
+}
+
+// Scan returns an iterator reading from o.
+// On each iteration it scans the row into v.
+// See [row.Scan].
+func Scan[T any](o Options, v *T) iter.Seq[error] {
+	return func(yield func(error) bool) {
+		s := getStructReflectValue(v)
+
+		for row, err := range o.Rows() {
+			if err != nil {
+				yield(err)
+				return
+			}
+			row.scan(s)
+			if !yield(nil) {
+				return
+			}
+		}
+	}
+}
+
+// Scan reflects on the row and sets the appropriate fields of s.
+// If v is not a pointer to a struct, Scan will panic.
+// The struct fields to be scanned into must be exported, of type string,
+// and have a csv field tag with the name of the field to copy.
+func (r *Row) Scan(v any) {
+	r.scan(getStructReflectValue(v))
+}
+
+func getStructReflectValue(v any) reflect.Value {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Pointer {
+		panic("must scan into pointer to struct")
+	}
+	s := rv.Elem()
+	if s.Kind() != reflect.Struct {
+		panic("must scan into pointer to struct")
+	}
+	return s
+}
+
+func (r *Row) scan(s reflect.Value) {
+	if s.Kind() != reflect.Struct {
+		panic("must scan into pointer to struct")
+	}
+	for i, field := range fields(s.Type()) {
+		if field.Type.Kind() != reflect.String ||
+			!field.IsExported() {
+			continue
+		}
+		key := field.Tag.Get("csv")
+		if key == "" {
+			continue
+		}
+		s.Field(i).SetString(r.Field(key))
+	}
+}
+
+func fields(t reflect.Type) iter.Seq2[int, reflect.StructField] {
+	return func(yield func(int, reflect.StructField) bool) {
+		for i := range t.NumField() {
+			if !yield(i, t.Field(i)) {
+				return
+			}
+		}
+	}
 }
