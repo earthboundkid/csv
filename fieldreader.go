@@ -12,8 +12,8 @@ import (
 // NULL is used to override the default separator of ',' and use 0x00 as the field separator.
 const NULL = -1
 
-// Options is a wrapper around encoding/csv.Reader that allows reference to
-// columns in a CSV source by field names. Its usage is like bufio.Scanner.
+// Options is a wrapper around encoding/csv.Reader
+// that allows look up of columns in a CSV source by field name.
 type Options struct {
 	// Reader must be set
 	Reader io.Reader
