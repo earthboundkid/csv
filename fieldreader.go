@@ -136,14 +136,19 @@ func (r *Row) Fields() map[string]string {
 // See [row.Scan].
 func Scan[T any](o Options, v *T) iter.Seq[error] {
 	return func(yield func(error) bool) {
-		s := getStructReflectValue(v)
-
+		var (
+			s        reflect.Value
+			fieldIdx []int
+		)
 		for row, err := range o.Rows() {
+			if fieldIdx == nil {
+				s, fieldIdx = row.buildFieldIdx(v)
+			}
 			if err != nil {
 				yield(err)
 				return
 			}
-			row.scan(s)
+			row.scan(s, fieldIdx)
 			if !yield(nil) {
 				return
 			}
@@ -156,10 +161,10 @@ func Scan[T any](o Options, v *T) iter.Seq[error] {
 // The struct fields to be scanned into must be exported, of type string,
 // and have a csv field tag with the name of the field to copy.
 func (r *Row) Scan(v any) {
-	r.scan(getStructReflectValue(v))
+	r.scan(r.buildFieldIdx(v))
 }
 
-func getStructReflectValue(v any) reflect.Value {
+func (r *Row) buildFieldIdx(v any) (reflect.Value, []int) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Pointer {
 		panic("must scan into pointer to struct")
@@ -168,14 +173,9 @@ func getStructReflectValue(v any) reflect.Value {
 	if s.Kind() != reflect.Struct {
 		panic("must scan into pointer to struct")
 	}
-	return s
-}
-
-func (r *Row) scan(s reflect.Value) {
-	if s.Kind() != reflect.Struct {
-		panic("must scan into pointer to struct")
-	}
+	fieldIdx := make([]int, s.NumField())
 	for i, field := range fields(s.Type()) {
+		fieldIdx[i] = -1
 		if field.Type.Kind() != reflect.String ||
 			!field.IsExported() {
 			continue
@@ -184,7 +184,18 @@ func (r *Row) scan(s reflect.Value) {
 		if key == "" {
 			continue
 		}
-		s.Field(i).SetString(r.Field(key))
+		if keyIdx, ok := r.idx[key]; ok {
+			fieldIdx[i] = keyIdx
+		}
+	}
+	return s, fieldIdx
+}
+
+func (r *Row) scan(s reflect.Value, fieldIdx []int) {
+	for i, idx := range fieldIdx {
+		if idx != -1 {
+			s.Field(i).SetString(r.row[idx])
+		}
 	}
 }
 
