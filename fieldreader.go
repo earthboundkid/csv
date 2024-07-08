@@ -156,6 +156,20 @@ func Scan[T any](o Options, v *T) iter.Seq[error] {
 	}
 }
 
+// ScanAll returns a slice of all objects read from o or an error.
+// See [Row.Scan].
+func ScanAll[T any](o Options) ([]T, error) {
+	var s []T
+	var v T
+	for err := range Scan(o, &v) {
+		if err != nil {
+			return nil, err
+		}
+		s = append(s, v)
+	}
+	return s, nil
+}
+
 // Scan reflects on the row and sets the appropriate fields of s.
 // If v is not a pointer to a struct, Scan will panic.
 // The struct fields to be scanned into must be exported, of type string,
