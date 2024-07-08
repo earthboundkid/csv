@@ -84,6 +84,31 @@ Ken,Thompson,ken
 	// "gri" Griesemer, Robert
 }
 
+func ExampleScanAll() {
+	in := `first_name,last_name,username
+"Rob","Pike",rob
+Ken,Thompson,ken
+"Robert","Griesemer","gri"
+`
+	csvopt := csv.Options{
+		Reader: strings.NewReader(in),
+	}
+
+	type user struct {
+		Username string `csv:"username"`
+		First    string `csv:"first_name"`
+		Last     string `csv:"last_name"`
+	}
+	users, err := csv.ScanAll[user](csvopt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(users)
+
+	// Output:
+	// [{rob Rob Pike} {ken Ken Thompson} {gri Robert Griesemer}]
+}
+
 func BenchmarkRows(b *testing.B) {
 	var buf strings.Builder
 	buf.WriteString("first_name,last_name,username\n")
