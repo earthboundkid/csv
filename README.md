@@ -6,6 +6,8 @@ Go CSV reader like Python's DictReader.
 go get github.com/earthboundkid/csv/v2
 ```
 
+For performance comparison to other libraries, see [this benchmark gist](https://gist.github.com/earthboundkid/af8e9b612f7bc2ce1af419f2a7975ffc). As of this writing, this library is 40% faster and uses 70% less memory than its closest competitor.
+
 ## Example
 
 Source CSV
