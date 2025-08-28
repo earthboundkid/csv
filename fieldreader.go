@@ -4,9 +4,11 @@ package csv
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io"
 	"iter"
 	"reflect"
+	"strconv"
 )
 
 // NULL is used to override the default separator of ',' and use 0x00 as the field separator.
@@ -67,10 +69,10 @@ func (o *Options) Rows() iter.Seq2[*Row, error] {
 		}
 
 		r := Row{
-			idx: make(map[string]int, len(fieldnames)),
+			keyToColIdx: make(map[string]int, len(fieldnames)),
 		}
 		for n, field := range fieldnames {
-			r.idx[field] = n
+			r.keyToColIdx[field] = n
 		}
 
 		var (
@@ -109,24 +111,24 @@ func (o *Options) ReadAll() ([]map[string]string, error) {
 // Row represents one scanned row of a CSV file.
 // It is only valid during the current iteration.
 type Row struct {
-	idx map[string]int
-	row []string
+	keyToColIdx map[string]int
+	row         []string
 }
 
 // Field returns the value in the currently loaded row of the column
 // corresponding to fieldname.
 func (r *Row) Field(fieldname string) string {
-	if idx, ok := r.idx[fieldname]; ok {
-		return r.row[idx]
+	if colIdx, ok := r.keyToColIdx[fieldname]; ok {
+		return r.row[colIdx]
 	}
 	return ""
 }
 
 // Fields returns a map from fieldnames to values for the current row.
 func (r *Row) Fields() map[string]string {
-	m := make(map[string]string, len(r.idx))
-	for key, idx := range r.idx {
-		m[key] = r.row[idx]
+	m := make(map[string]string, len(r.keyToColIdx))
+	for key, colIdx := range r.keyToColIdx {
+		m[key] = r.row[colIdx]
 	}
 	return m
 }
@@ -138,18 +140,17 @@ func Scan[T any](o Options, v *T) iter.Seq[error] {
 	return func(yield func(error) bool) {
 		var (
 			s        reflect.Value
-			fieldIdx []int
+			fieldIdx []structFieldToCSVColumn
 		)
 		for row, err := range o.Rows() {
 			if fieldIdx == nil {
-				s, fieldIdx = row.buildFieldIdx(v)
+				s, fieldIdx = row.mapFields(v)
 			}
 			if err != nil {
 				yield(err)
 				return
 			}
-			row.scan(s, fieldIdx)
-			if !yield(nil) {
+			if !yield(row.scan(s, fieldIdx)) {
 				return
 			}
 		}
@@ -174,11 +175,17 @@ func ScanAll[T any](o Options) ([]T, error) {
 // If v is not a pointer to a struct, Scan will panic.
 // The struct fields to be scanned into must be exported, of type string,
 // and have a csv field tag with the name of the field to copy.
-func (r *Row) Scan(v any) {
-	r.scan(r.buildFieldIdx(v))
+func (r *Row) Scan(v any) error {
+	return r.scan(r.mapFields(v))
 }
 
-func (r *Row) buildFieldIdx(v any) (reflect.Value, []int) {
+type structFieldToCSVColumn struct {
+	fieldIndex  []int
+	columnIndex int
+	reflect.Kind
+}
+
+func (r *Row) mapFields(v any) (reflect.Value, []structFieldToCSVColumn) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Pointer {
 		panic("must scan into pointer to struct")
@@ -187,38 +194,126 @@ func (r *Row) buildFieldIdx(v any) (reflect.Value, []int) {
 	if s.Kind() != reflect.Struct {
 		panic("must scan into pointer to struct")
 	}
-	fieldIdx := make([]int, s.NumField())
-	for i, field := range fields(s.Type()) {
-		fieldIdx[i] = -1
-		if field.Type.Kind() != reflect.String ||
-			!field.IsExported() {
+	fields := reflect.VisibleFields(s.Type())
+	fieldIdx := make([]structFieldToCSVColumn, 0, len(fields))
+	for _, field := range fields {
+		if !field.IsExported() {
+			continue
+		}
+		kind := field.Type.Kind()
+		switch kind {
+		case reflect.String,
+			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+			reflect.Float32, reflect.Float64:
+		default:
 			continue
 		}
 		key := field.Tag.Get("csv")
 		if key == "" {
 			continue
 		}
-		if keyIdx, ok := r.idx[key]; ok {
-			fieldIdx[i] = keyIdx
+		if keyIdx, ok := r.keyToColIdx[key]; ok {
+			fieldIdx = append(fieldIdx, structFieldToCSVColumn{
+				fieldIndex:  field.Index,
+				columnIndex: keyIdx,
+				Kind:        kind,
+			})
 		}
 	}
 	return s, fieldIdx
 }
 
-func (r *Row) scan(s reflect.Value, fieldIdx []int) {
-	for i, idx := range fieldIdx {
-		if idx != -1 {
-			s.Field(i).SetString(r.row[idx])
-		}
-	}
-}
-
-func fields(t reflect.Type) iter.Seq2[int, reflect.StructField] {
-	return func(yield func(int, reflect.StructField) bool) {
-		for i := range t.NumField() {
-			if !yield(i, t.Field(i)) {
-				return
+func (r *Row) scan(s reflect.Value, fieldIdx []structFieldToCSVColumn) error {
+	for _, idx := range fieldIdx {
+		switch idx.Kind {
+		case reflect.String:
+			s.FieldByIndex(idx.fieldIndex).SetString(r.row[idx.columnIndex])
+		case reflect.Int:
+			n, err := strconv.ParseInt(r.row[idx.columnIndex], 0, 0)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
 			}
+			s.FieldByIndex(idx.fieldIndex).SetInt(n)
+		case reflect.Int8:
+			n, err := strconv.ParseInt(r.row[idx.columnIndex], 0, 8)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetInt(n)
+		case reflect.Int16:
+			n, err := strconv.ParseInt(r.row[idx.columnIndex], 0, 16)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetInt(n)
+		case reflect.Int32:
+			n, err := strconv.ParseInt(r.row[idx.columnIndex], 0, 32)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetInt(n)
+		case reflect.Int64:
+			n, err := strconv.ParseInt(r.row[idx.columnIndex], 0, 64)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetInt(n)
+		case reflect.Uint:
+			n, err := strconv.ParseUint(r.row[idx.columnIndex], 0, 0)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetUint(n)
+		case reflect.Uint8:
+			n, err := strconv.ParseUint(r.row[idx.columnIndex], 0, 8)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetUint(n)
+		case reflect.Uint16:
+			n, err := strconv.ParseUint(r.row[idx.columnIndex], 0, 16)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetUint(n)
+		case reflect.Uint32:
+			n, err := strconv.ParseUint(r.row[idx.columnIndex], 0, 32)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetUint(n)
+		case reflect.Uint64:
+			n, err := strconv.ParseUint(r.row[idx.columnIndex], 0, 64)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetUint(n)
+		case reflect.Float32:
+			n, err := strconv.ParseFloat(r.row[idx.columnIndex], 32)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetFloat(n)
+		case reflect.Float64:
+			n, err := strconv.ParseFloat(r.row[idx.columnIndex], 64)
+			if err != nil {
+				name := s.Type().FieldByIndex(idx.fieldIndex).Name
+				return fmt.Errorf("setting %s: %w", name, err)
+			}
+			s.FieldByIndex(idx.fieldIndex).SetFloat(n)
 		}
 	}
+	return nil
 }
