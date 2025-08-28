@@ -224,96 +224,89 @@ func (r *Row) mapFields(v any) (reflect.Value, []structFieldToCSVColumn) {
 	return s, fieldIdx
 }
 
-func (r *Row) scan(s reflect.Value, fieldIdx []structFieldToCSVColumn) error {
-	for _, idx := range fieldIdx {
-		switch idx.Kind {
+func (r *Row) scan(s reflect.Value, fieldColumns []structFieldToCSVColumn) error {
+	for _, fieldColumn := range fieldColumns {
+		switch fieldColumn.Kind {
 		case reflect.String:
-			s.FieldByIndex(idx.fieldIndex).SetString(r.row[idx.columnIndex])
+			s.FieldByIndex(fieldColumn.fieldIndex).SetString(r.row[fieldColumn.columnIndex])
 		case reflect.Int:
-			n, err := strconv.ParseInt(r.row[idx.columnIndex], 0, 0)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseInt(r.row[fieldColumn.columnIndex], 0, 0); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetInt(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetInt(n)
 		case reflect.Int8:
-			n, err := strconv.ParseInt(r.row[idx.columnIndex], 0, 8)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseInt(r.row[fieldColumn.columnIndex], 0, 8); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetInt(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetInt(n)
 		case reflect.Int16:
-			n, err := strconv.ParseInt(r.row[idx.columnIndex], 0, 16)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseInt(r.row[fieldColumn.columnIndex], 0, 16); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetInt(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetInt(n)
 		case reflect.Int32:
-			n, err := strconv.ParseInt(r.row[idx.columnIndex], 0, 32)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseInt(r.row[fieldColumn.columnIndex], 0, 32); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetInt(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetInt(n)
 		case reflect.Int64:
-			n, err := strconv.ParseInt(r.row[idx.columnIndex], 0, 64)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseInt(r.row[fieldColumn.columnIndex], 0, 64); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetInt(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetInt(n)
 		case reflect.Uint:
-			n, err := strconv.ParseUint(r.row[idx.columnIndex], 0, 0)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseUint(r.row[fieldColumn.columnIndex], 0, 0); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetUint(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetUint(n)
 		case reflect.Uint8:
-			n, err := strconv.ParseUint(r.row[idx.columnIndex], 0, 8)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseUint(r.row[fieldColumn.columnIndex], 0, 8); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetUint(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetUint(n)
 		case reflect.Uint16:
-			n, err := strconv.ParseUint(r.row[idx.columnIndex], 0, 16)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseUint(r.row[fieldColumn.columnIndex], 0, 16); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetUint(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetUint(n)
 		case reflect.Uint32:
-			n, err := strconv.ParseUint(r.row[idx.columnIndex], 0, 32)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseUint(r.row[fieldColumn.columnIndex], 0, 32); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetUint(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetUint(n)
 		case reflect.Uint64:
-			n, err := strconv.ParseUint(r.row[idx.columnIndex], 0, 64)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseUint(r.row[fieldColumn.columnIndex], 0, 64); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetUint(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetUint(n)
 		case reflect.Float32:
-			n, err := strconv.ParseFloat(r.row[idx.columnIndex], 32)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseFloat(r.row[fieldColumn.columnIndex], 32); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetFloat(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetFloat(n)
 		case reflect.Float64:
-			n, err := strconv.ParseFloat(r.row[idx.columnIndex], 64)
-			if err != nil {
-				name := s.Type().FieldByIndex(idx.fieldIndex).Name
-				return fmt.Errorf("setting %s: %w", name, err)
+			if n, err := strconv.ParseFloat(r.row[fieldColumn.columnIndex], 64); err != nil {
+				return fieldErr(s, fieldColumn, err)
+			} else {
+				s.FieldByIndex(fieldColumn.fieldIndex).SetFloat(n)
 			}
-			s.FieldByIndex(idx.fieldIndex).SetFloat(n)
 		}
 	}
 	return nil
+}
+
+func fieldErr(s reflect.Value, idx structFieldToCSVColumn, err error) error {
+	name := s.Type().FieldByIndex(idx.fieldIndex).Name
+	return fmt.Errorf("setting %s: %w", name, err)
 }
